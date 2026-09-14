@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="ClipThat_v0/ClipThat_v0.vcxproj" Id="e5243f6d-bcf5-4d39-95ba-a2a3419a12bd" />
+</Solution>

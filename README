@@ -1,0 +1,53 @@
+#ClipThat
+
+Super lightweight clipboard manager for windows written in C using Wind32 and SQLite3
+
+ClipThat runs in system tray, keeps the copy entries into a database for later use.
+
+## Features
+
+1. Clipboard History
+2. Duplicate Detection
+3. Most Recently Used History Ordering
+4. Configurable history limit
+5. System Tray
+6. Global Hotkey ( CTRL + ALT + H )
+7. Double Click to restore and paste
+8. SQLite Presistance
+9. UFT-16 clipboard support
+10. No External runtime dependencies
+
+## Current Ver
+
+**V 1.0.0**
+
+## How it works
+Clipboard changes are captured through the Windows clipboard listener API, during runtime clipboard entries are stored in memory as a linked list:
+
+Clipboard -> Win32 clipboard listener -> History manager -> In-memory linked list -> History UI
+
+When the application shuts down, the current history is written to SQLite, on the next launch, the history is loaded back into memory
+
+
+## Database
+
+The database is created automatically after opening the ClipThat which will be stored in %LOCALAPPDATA%\ClipThat\
+
+## Hotkey usage
+ 
+for showing history you have to use Ctrl + Alt + H or you can use the tray icon, you have to right click on it and a menu will show up which there you can open the history or exit the program.
+
+## Building 
+### Requirements
+for building you need {
+    Windows OS (OBV !!)
+    Visual studio
+    Desktop Development with c++ workload
+    Windows SDK
+}
+
+even tho the program is written in C you still need the c++ workload in Visual Studio.
+
+## License 
+This project is licensed under the MIT License
+SQLite is separately released into the public domain.
