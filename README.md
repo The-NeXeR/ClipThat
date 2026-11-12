@@ -19,7 +19,7 @@ ClipThat runs in the system tray and saves your clipboard history so you can acc
 
 ## Current Version
 
-**v1.0.0**
+**v1.0.1**
 
 ## How It Works
 
@@ -62,11 +62,23 @@ You can also right-click the ClipThat icon in the system tray. The menu lets you
 ### Requirements
 
 - Windows
-- Visual Studio
-- Desktop development with C++ workload
-- Windows SDK
+- CMake 3.15 or newer
+- A C compiler with the Windows SDK - for example Visual Studio with the **Desktop development with C++** workload, or MinGW-w64
 
-Even though ClipThat is written in C, the **Desktop development with C++** workload is required because it includes the Windows development tools and SDK needed to build the project.
+Even though ClipThat is written in C, the **Desktop development with C++** workload is required when building with Visual Studio because it includes the Windows development tools and SDK needed to build the project.
+
+### Build steps
+
+From the `ClipThat` folder:
+
+```sh
+cmake -S . -B build
+cmake --build build --config Release
+```
+
+The finished executable is written to `build\Release\ClipThat.exe`.
+
+You can also open the `ClipThat` folder directly in Visual Studio (**File > Open > Folder**) and it will pick up the `CMakeLists.txt` automatically.
 
 ## License
 

@@ -55,3 +55,9 @@ x86/
 # OS files
 .DS_Store
 Thumbs.db
+
+# CMake
+[Bb]uild/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
