@@ -4,6 +4,7 @@
 #include "clipboard.h"
 #include "history.h"
 #include "session.h"
+#include "resources.h"
 
 #define HOTKEY_SHOW_HISTORY 1
 #define MAX_HISTORY_COUNT 50
@@ -106,6 +107,8 @@ bool mainWindowCreate(HINSTANCE hInstance) {
 	wc.lpszClassName = MAIN_WINDOW_CLASS_NAME;
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(IDI_ICON));
+	wc.hIconSm = wc.hIcon;
 
 	if (!RegisterClassEx(&wc)) {
 		MessageBoxW(NULL, L"Failed to register the main window class.", L"ClipThat - Startup Error", MB_ICONERROR);

@@ -43,6 +43,7 @@ add_executable(ClipThat WIN32
     src/session.c
     src/startup.c
     src/trayIcon.c
+    resources/ClipThat.rc
 )
 
 target_include_directories(ClipThat PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

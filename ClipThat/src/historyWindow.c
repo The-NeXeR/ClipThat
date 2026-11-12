@@ -2,6 +2,7 @@
 #include "historyView.h"
 #include "paste.h"
 #include "clipboard.h"
+#include "resources.h"
 
 #define LISTBOX_ID 2000
 #define CLASS_NAME L"HistoryWindow"
@@ -56,6 +57,8 @@ bool historyWindowCreate(HINSTANCE hInstance) {
 	wc.lpszClassName = CLASS_NAME;
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hIcon = LoadIconW(hInstance, MAKEINTRESOURCEW(IDI_ICON));
+	wc.hIconSm = wc.hIcon;
 
 	if (!RegisterClassEx(&wc)) {
 		OutputDebugStringW(L"historyWindowCreate: failed to register window class.\n");

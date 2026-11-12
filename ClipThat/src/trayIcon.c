@@ -1,4 +1,5 @@
 #include "trayIcon.h"
+#include "resources.h"
 #include <wchar.h>
 #include <stdlib.h> // _TRUNCATE
 
@@ -11,7 +12,14 @@ bool trayIconCreate(HWND ownerHWND) {
 	nid.uID = 1;
 	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 	nid.uCallbackMessage = WM_TRAYICON;
-	nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	nid.hIcon = (HICON)LoadImageW(
+		GetModuleHandleW(NULL),
+		MAKEINTRESOURCEW(IDI_ICON),
+		IMAGE_ICON,
+		GetSystemMetrics(SM_CXSMICON),
+		GetSystemMetrics(SM_CYSMICON),
+		LR_DEFAULTCOLOR
+	);
 	wcscpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(wchar_t), L"ClipThat");
 
 	if (!Shell_NotifyIcon(NIM_ADD, &nid)) { return false; }
@@ -22,7 +30,6 @@ bool trayIconCreate(HWND ownerHWND) {
 bool trayIconNotify(const wchar_t* title, const wchar_t* message) {
 	if (!iconAdded) return false;
 	nid.uFlags = NIF_INFO;
-	// _TRUNCATE: a too-long message must degrade to a truncated hint, not abort the app
 	wcscpy_s(nid.szInfoTitle, _TRUNCATE, title);
 	wcscpy_s(nid.szInfo, _TRUNCATE, message);
 	nid.dwInfoFlags = NIIF_INFO | NIIF_RESPECT_QUIET_TIME;
