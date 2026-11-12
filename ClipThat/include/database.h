@@ -24,4 +24,7 @@ bool databaseInit(Database* db);
 bool databaseSaveH(Database* db, const ClipboardEntry* head);
 bool databaseLoadH(Database* db, ClipboardEntry** head);
 
+// database flush
+bool databaseFlushH(Database* db);
+
 #endif // !DATABASE_H

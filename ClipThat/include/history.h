@@ -8,10 +8,4 @@ bool historyAdd(ClipboardEntry** head, const wchar_t* text);
 void historyLimit(ClipboardEntry** head, size_t maxCount);
 void historyClear(ClipboardEntry** head);
 
-
-ClipboardEntry* historyDetachDuplicate(
-	ClipboardEntry** head,
-	const wchar_t* text
-);
-
 #endif // !HISTORY_H

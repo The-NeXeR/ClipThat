@@ -75,7 +75,7 @@ bool databaseOpen(Database* db) {
 
 void databaseClose(Database* db) {
 	if (!db || !db->handle) return;
-	int retCode = sqlite3_close(db->handle);
+	int retCode = sqlite3_close_v2(db->handle);
 	if (retCode != SQLITE_OK) {
 		OutputDebugStringA("SQLite close failed: ");
 		OutputDebugStringA(sqlite3_errmsg(db->handle));
@@ -237,5 +237,32 @@ bool databaseLoadH(Database* db, ClipboardEntry** head) {
 		return false;
 	}
 
+	return true;
+}
+
+
+bool databaseFlushH(Database* db) {
+	if (!db || !db->handle) return false;
+	int returnSQL = sqlite3_exec(db->handle, "BEGIN TRANSACTION;", NULL, NULL, NULL);
+	if (returnSQL != SQLITE_OK) {
+		OutputDebugStringA("SQLite transaction begin failed: ");
+		OutputDebugStringA(sqlite3_errmsg(db->handle));
+		return false;
+	}
+	returnSQL = sqlite3_exec(db->handle, "DELETE FROM cHistory;", NULL, NULL, NULL);
+	if (returnSQL != SQLITE_OK) {
+		OutputDebugStringA("SQLite delete failed: ");
+		OutputDebugStringA(sqlite3_errmsg(db->handle));
+		sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
+		return false;
+	}
+	returnSQL = sqlite3_exec(db->handle, "COMMIT;", NULL, NULL, NULL);
+	if (returnSQL != SQLITE_OK) {
+		OutputDebugStringA("SQLite commit failed: ");
+		OutputDebugStringA(sqlite3_errmsg(db->handle));
+		OutputDebugStringA("\n");
+		sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
+		return false;
+	}
 	return true;
 }

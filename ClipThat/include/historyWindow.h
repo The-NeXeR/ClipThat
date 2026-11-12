@@ -7,5 +7,7 @@
 bool historyWindowCreate(HINSTANCE hInstance);
 void historyWindowRefresh(const ClipboardEntry* head);
 void historyWindowShow(const ClipboardEntry* head, HWND targetWindow);
+void historyWindowHide(void);
+bool historyWindowIsVisible(void);
 
 #endif // !HISTORY_WINDOW_H

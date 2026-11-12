@@ -24,11 +24,24 @@ void trayIconDestroy(void) {
 	iconAdded = false;
 }
 
+// Message broadcast by Explorer whenever the taskbar is (re)created.
+// When it arrives, the tray icon has been removed and must be re-added.
+UINT trayIconTaskbarCreatedMessage(void) {
+	return RegisterWindowMessageW(L"TaskbarCreated");
+}
+
+void trayIconRestore(void) {
+	if (nid.hWnd == NULL) { return; }
+	if (Shell_NotifyIcon(NIM_ADD, &nid)) { iconAdded = true; }
+}
+
 void trayIconShowContextMenu(HWND ownerHwnd) {
 	HMENU hMenu = CreatePopupMenu();
 	if (hMenu == NULL) { return; }
-	AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
 	AppendMenuW(hMenu, MF_STRING, ID_TRAY_SHOW_HISTORY, L"Show History");
+	AppendMenuW(hMenu, MF_STRING, ID_TRAY_FLUSH_HISTORY, L"Delete History");
+	AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+	AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");
 	POINT pt;
 	GetCursorPos(&pt);
 	SetForegroundWindow(ownerHwnd);

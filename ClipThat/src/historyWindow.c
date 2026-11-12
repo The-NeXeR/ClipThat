@@ -55,6 +55,7 @@ bool historyWindowCreate(HINSTANCE hInstance) {
 	wc.hInstance = hInstance;
 	wc.lpszClassName = CLASS_NAME;
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	if (!RegisterClassEx(&wc)) {
 		OutputDebugStringW(L"historyWindowCreate: failed to register window class.\n");
@@ -96,6 +97,14 @@ bool historyWindowCreate(HINSTANCE hInstance) {
 }
 void historyWindowRefresh(const ClipboardEntry* head) {
 	historyPopulateListBox(listBoxHwnd, head);
+}
+
+void historyWindowHide(void) {
+	if (historyHwnd != NULL) { ShowWindow(historyHwnd, SW_HIDE); }
+}
+
+bool historyWindowIsVisible(void) {
+	return historyHwnd != NULL && IsWindowVisible(historyHwnd);
 }
 
 void historyWindowShow(const ClipboardEntry* head, HWND targetWindow) {

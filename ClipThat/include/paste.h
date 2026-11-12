@@ -1,8 +1,8 @@
-#ifndef PATH_H
-#define PATH_H
+#ifndef PASTE_H
+#define PASTE_H
 
 #include <Windows.h>
 
 void pasteSimulate(HWND window);
 
-#endif // !PATH_H
+#endif // !PASTE_H

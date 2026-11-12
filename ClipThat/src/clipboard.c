@@ -43,7 +43,10 @@ bool clipboardSetText(HWND owner, const wchar_t* text) {
 	memcpy(clipText, text, sizealloc);
 	if (!GlobalUnlock(gMem)) {
 		DWORD err = GetLastError();
-		if (err != NO_ERROR) { goto cleanup; }
+		if (err != NO_ERROR) {
+			clipText = NULL; // already unlocked (or failed to); avoid double GlobalUnlock in cleanup
+			goto cleanup;
+		}
 	}
 	clipText = NULL;
 	if (SetClipboardData(CF_UNICODETEXT, gMem) == NULL) { goto cleanup; }

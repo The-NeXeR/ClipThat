@@ -1,6 +1,8 @@
 #include <windows.h>
 #include "mainWindow.h"
 #include "historyWindow.h"
+#include "startup.h"
+
 
 int WINAPI WinMain(
     _In_ HINSTANCE hInstance,
@@ -17,7 +19,10 @@ int WINAPI WinMain(
         return 1;
     }
     if (!mainWindowCreate(hInstance)) { return 1; }
-    MSG msg;
+    if (!startupEnable()) {
+        OutputDebugStringW(L"WinMain: failed to register ClipThat for Windows startup.\n");
+    }
+    MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0) > 0) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);

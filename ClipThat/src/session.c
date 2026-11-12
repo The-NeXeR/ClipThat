@@ -28,6 +28,10 @@ bool sessionInit(ClipboardEntry** head) {
 	}
 	return true;
 }
+bool sessionFlush(void) {
+	if (db == NULL) { return false; }
+	return databaseFlushH(db);
+}
 
 bool sessionSave(const ClipboardEntry* head) {
 	if (db == NULL) { return false; }

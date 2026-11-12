@@ -11,6 +11,7 @@
 
 static ClipboardEntry* head = NULL;
 static HWND lastForegroundWindow = NULL;
+static UINT taskbarCreatedMsg = 0;
 
 static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
@@ -46,13 +47,25 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 
 	case WM_HOTKEY:
 		if (wParam == HOTKEY_SHOW_HISTORY) {
-			lastForegroundWindow = GetForegroundWindow();
-			historyWindowShow(head, lastForegroundWindow);
+			if (historyWindowIsVisible()) {
+				historyWindowHide();
+			}
+			else {
+				lastForegroundWindow = GetForegroundWindow();
+				historyWindowShow(head, lastForegroundWindow);
+			}
 		}
 		return 0;
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
+		case ID_TRAY_FLUSH_HISTORY:
+			if (MessageBoxW(hwnd, L"Are you sure? This will delete all Clipboard's History.", L"Confirmation", MB_YESNO | MB_ICONWARNING) == IDYES) {
+				sessionFlush();
+				historyClear(&head);
+				historyWindowRefresh(head);
+			}
+			break;
 		case ID_TRAY_SHOW_HISTORY:
 			historyWindowShow(head, lastForegroundWindow);
 			break;
@@ -69,6 +82,10 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 		return 0;
 
 	default:
+		if (taskbarCreatedMsg != 0 && message == taskbarCreatedMsg) {
+			trayIconRestore(); // Explorer restarted; re-add the tray icon
+			return 0;
+		}
 		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
 }
@@ -88,6 +105,7 @@ bool mainWindowCreate(HINSTANCE hInstance) {
 	wc.hInstance = hInstance;
 	wc.lpszClassName = MAIN_WINDOW_CLASS_NAME;
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 
 	if (!RegisterClassEx(&wc)) {
 		MessageBoxW(NULL, L"Failed to register the main window class.", L"ClipThat - Startup Error", MB_ICONERROR);
@@ -105,6 +123,7 @@ bool mainWindowCreate(HINSTANCE hInstance) {
 		MessageBoxW(NULL, L"Failed to create the main window.", L"ClipThat - Startup Error", MB_ICONERROR);
 		return false;
 	}
+	taskbarCreatedMsg = trayIconTaskbarCreatedMessage();
 	if (!trayIconCreate(hwnd)) {
 		MessageBoxW(NULL, L"Failed to create tray icon.", L"ClipThat - Startup Error", MB_ICONERROR);
 		DestroyWindow(hwnd);
