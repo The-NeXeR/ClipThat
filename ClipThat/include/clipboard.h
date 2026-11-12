@@ -10,6 +10,8 @@
 typedef struct ClipboardEntry {
     wchar_t* text;
     size_t length;
+    long long firstCopied;
+    long long lastUsed;
     struct ClipboardEntry* next;
 } ClipboardEntry;
 

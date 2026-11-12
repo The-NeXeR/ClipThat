@@ -1,6 +1,7 @@
 #include "history.h"
 #include <stdlib.h>
 #include <wchar.h>
+#include <time.h>
 
 static wchar_t* dupString(const wchar_t* source)
 {
@@ -27,7 +28,7 @@ void historyClear(ClipboardEntry** head) {
 	while (current != NULL) {
 		ClipboardEntry* next = current->next;
 		deleteEntry(current);
-		current = next; 
+		current = next;
 	}
 	*head = NULL;
 }
@@ -58,8 +59,9 @@ bool historyAdd(ClipboardEntry** head, const wchar_t* text)
 	if (head == NULL || text == NULL || *text == L'\0') { return false; }
 
 	ClipboardEntry* existing = historyDetachDuplicate(head, text);
-	
+
 	if (existing != NULL) {
+		existing->lastUsed = (long long)time(NULL);
 		existing->next = *head;
 		*head = existing;
 		return true;
@@ -73,6 +75,8 @@ bool historyAdd(ClipboardEntry** head, const wchar_t* text)
 		free(entry);
 		return false;
 	}
+	entry->firstCopied = (long long)time(NULL);
+	entry->lastUsed = entry->firstCopied;
 	entry->length = wcslen(entry->text);
 	entry->next = *head;
 	*head = entry;

@@ -77,10 +77,14 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 		return 0;
 
 	case WM_CLIPBOARDUPDATE:
-		if (clipboardHandleUpdate(hwnd, &head, MAX_HISTORY_COUNT)) {
+	{
+		ClipboardEntry* previousHead = head;
+		if (clipboardHandleUpdate(hwnd, &head, MAX_HISTORY_COUNT) && head != previousHead) {
+			sessionTouch(head->text, MAX_HISTORY_COUNT);
 			historyWindowRefresh(head);
 		}
 		return 0;
+	}
 
 	default:
 		if (taskbarCreatedMsg != 0 && message == taskbarCreatedMsg) {

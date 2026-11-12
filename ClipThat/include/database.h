@@ -23,6 +23,7 @@ bool databaseInit(Database* db);
 // database save/load
 bool databaseSaveH(Database* db, const ClipboardEntry* head);
 bool databaseLoadH(Database* db, ClipboardEntry** head);
+bool databaseTouchH(Database* db, const wchar_t* text, int maxCount);
 
 // database flush
 bool databaseFlushH(Database* db);

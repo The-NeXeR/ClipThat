@@ -38,6 +38,11 @@ bool sessionSave(const ClipboardEntry* head) {
 	return databaseSaveH(db, head);
 }
 
+bool sessionTouch(const wchar_t* text, size_t maxCount) {
+	if (db == NULL) { return false; }
+	return databaseTouchH(db, text, (int)maxCount);
+}
+
 void sessionShutdown(void) {
 	if (db != NULL) {
 		databaseDestroy(db);
