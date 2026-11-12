@@ -54,6 +54,7 @@ target_link_libraries(ClipThat PRIVATE
     sqlite3   # bundled static library built from src/sqlite3.c
     kernel32
     user32    # windows, clipboard, hotkeys, simulated input
+    comctl32  # SetWindowSubclass (search box + listbox keyboard flow)
     advapi32  # registry API (startup registration)
     shell32   # tray icon, SHGetKnownFolderPath
     ole32     # CoTaskMemFree

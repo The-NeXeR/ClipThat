@@ -1,4 +1,5 @@
 #include "historyView.h"
+#include "history.h"
 #include <stdlib.h>
 #include <wchar.h>
 #define MAX_PREVIEW_LENGTH 120
@@ -41,23 +42,44 @@ wchar_t* historyPreviewBuild(const wchar_t* text) {
 	return preview;
 }
 
-void historyPopulateListBox(HWND listBoxHwnd, const ClipboardEntry* head) {
+static bool appendEntryToListBox(HWND listBoxHwnd, const ClipboardEntry* entry) {
+	wchar_t* preview = historyPreviewBuild(entry->text);
+	if (preview == NULL) {
+		OutputDebugStringW(L"historyPreviewBuild: failed to build preview, skipping entry.\n");
+		return false;
+	}
+	LRESULT index = SendMessage(listBoxHwnd, LB_ADDSTRING, 0, (LPARAM)preview);
+	free(preview);
+	if (index == LB_ERR || index == LB_ERRSPACE) {
+		OutputDebugStringW(L"historyPopulateListBox: failed to add preview to list box.\n");
+		return false;
+	}
+	SendMessage(listBoxHwnd, LB_SETITEMDATA, index, (LPARAM)entry);
+	return true;
+}
+
+void historyPopulateListBox(HWND listBoxHwnd, const ClipboardEntry* head, const wchar_t* query) {
 	if (listBoxHwnd == NULL) { return; }
 	SendMessage(listBoxHwnd, LB_RESETCONTENT, 0, 0);
 	// add to list box in reverse order
 	for (const ClipboardEntry* entry = head; entry != NULL; entry = entry->next) {
-		wchar_t* preview = historyPreviewBuild(entry->text);
-		if (preview == NULL) {
-			OutputDebugStringW(L"historyPreviewBuild: failed to build preview, skipping entry.\n");
-			continue;
+		if (!historyMatchesQuery(entry->text, query)) { continue; }
+		appendEntryToListBox(listBoxHwnd, entry);
+	}
+}
+
+void historyAppendSearchResults(HWND listBoxHwnd, const ClipboardEntry* results, const wchar_t* query, const ClipboardEntry* existingHead) {
+	if (listBoxHwnd == NULL) { return; }
+	for (const ClipboardEntry* entry = results; entry != NULL; entry = entry->next) {
+		bool duplicate = false;
+		for (const ClipboardEntry* existing = existingHead; existing != NULL; existing = existing->next) {
+			if (wcscmp(existing->text, entry->text) == 0) {
+				duplicate = true;
+				break;
+			}
 		}
-		// preview to the list box and add the entry point init
-		LRESULT index = SendMessage(listBoxHwnd, LB_ADDSTRING, 0, (LPARAM)preview);
-		free(preview);
-		if (index == LB_ERR || index == LB_ERRSPACE) {
-			OutputDebugStringW(L"historyPopulateListBox: failed to add preview to list box.\n");
-			continue;
-		}
-		SendMessage(listBoxHwnd, LB_SETITEMDATA, index, (LPARAM)entry);
+		if (duplicate) { continue; }
+		if (!historyMatchesQuery(entry->text, query)) { continue; }
+		appendEntryToListBox(listBoxHwnd, entry);
 	}
 }

@@ -20,10 +20,10 @@ void databaseClose(Database* db);
 // database setup
 bool databaseInit(Database* db);
 
-// database save/load
-bool databaseSaveH(Database* db, const ClipboardEntry* head);
-bool databaseLoadH(Database* db, ClipboardEntry** head);
-bool databaseTouchH(Database* db, const wchar_t* text, int maxCount);
+// database load/touch/search
+bool databaseLoadH(Database* db, ClipboardEntry** head, int limit);
+bool databaseTouchH(Database* db, const wchar_t* text, int maxDbCount);
+bool databaseSearchH(Database* db, const wchar_t* query, int maxResults, ClipboardEntry** results);
 
 // database flush
 bool databaseFlushH(Database* db);

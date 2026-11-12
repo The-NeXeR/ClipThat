@@ -1,6 +1,7 @@
 #include "session.h"
 #include "database.h"
 #include "path.h"
+#include "config.h"
 #include <stdlib.h>
 #include <Windows.h>
 
@@ -21,7 +22,7 @@ bool sessionInit(ClipboardEntry** head) {
 		OutputDebugStringW(L"sessionInit: failed to create database.\n");
 		return false;
 	}
-	if (!databaseLoadH(db, head)) {
+	if (!databaseLoadH(db, head, MAX_HISTORY_COUNT)) {
 		OutputDebugStringW(L"sessionInit: failed to load existing history.\n");
 		sessionShutdown();
 		return false;
@@ -33,14 +34,14 @@ bool sessionFlush(void) {
 	return databaseFlushH(db);
 }
 
-bool sessionSave(const ClipboardEntry* head) {
+bool sessionTouch(const wchar_t* text, size_t maxDbCount) {
 	if (db == NULL) { return false; }
-	return databaseSaveH(db, head);
+	return databaseTouchH(db, text, (int)maxDbCount);
 }
 
-bool sessionTouch(const wchar_t* text, size_t maxCount) {
+bool sessionSearch(const wchar_t* query, int maxResults, ClipboardEntry** results) {
 	if (db == NULL) { return false; }
-	return databaseTouchH(db, text, (int)maxCount);
+	return databaseSearchH(db, query, maxResults, results);
 }
 
 void sessionShutdown(void) {

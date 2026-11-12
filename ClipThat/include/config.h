@@ -1,0 +1,9 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define MAX_HISTORY_COUNT 50
+#define MAX_DB_HISTORY 15000
+#define MAX_SEARCH_RESULTS 1000
+#define SEARCH_QUERY_MAX 128
+
+#endif

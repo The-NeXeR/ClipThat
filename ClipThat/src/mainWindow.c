@@ -5,9 +5,9 @@
 #include "history.h"
 #include "session.h"
 #include "resources.h"
+#include "config.h"
 
 #define HOTKEY_SHOW_HISTORY 1
-#define MAX_HISTORY_COUNT 50
 #define MAIN_WINDOW_CLASS_NAME L"MyWindow"
 
 static ClipboardEntry* head = NULL;
@@ -20,17 +20,9 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 		return TRUE;
 
 	case WM_ENDSESSION:
-		if (wParam) {
-			if (!sessionSave(head)) {
-				OutputDebugStringW(L"MainWndProc: failed to save clipboard history on session end.\n");
-			}
-		}
 		return 0;
 
 	case WM_DESTROY:
-		if (!sessionSave(head)) {
-			OutputDebugStringW(L"MainWndProc: failed to save clipboard history on exit.\n");
-		}
 		sessionShutdown();
 		historyClear(&head);
 		RemoveClipboardFormatListener(hwnd);
@@ -80,7 +72,7 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 	{
 		ClipboardEntry* previousHead = head;
 		if (clipboardHandleUpdate(hwnd, &head, MAX_HISTORY_COUNT) && head != previousHead) {
-			sessionTouch(head->text, MAX_HISTORY_COUNT);
+			sessionTouch(head->text, MAX_DB_HISTORY);
 			historyWindowRefresh(head);
 		}
 		return 0;

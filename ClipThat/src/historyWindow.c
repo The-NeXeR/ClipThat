@@ -1,15 +1,105 @@
 #include "historyWindow.h"
 #include "historyView.h"
+#include "history.h"
 #include "paste.h"
 #include "clipboard.h"
+#include "session.h"
+#include "config.h"
 #include "resources.h"
+#include <commctrl.h>
 
 #define LISTBOX_ID 2000
+#define SEARCHBOX_ID 2001
 #define CLASS_NAME L"HistoryWindow"
 
 static HWND historyHwnd = NULL;
 static HWND listBoxHwnd = NULL;
+static HWND searchBoxHwnd = NULL;
 static HWND pasteTargetWindow = NULL;
+static const ClipboardEntry* historyHead = NULL;
+static wchar_t searchQuery[SEARCH_QUERY_MAX] = { 0 };
+static ClipboardEntry* searchResults = NULL;
+
+static void refreshHistoryList(void) {
+	if (listBoxHwnd == NULL) { return; }
+	SendMessage(listBoxHwnd, LB_RESETCONTENT, 0, 0);
+	historyClear(&searchResults);
+	if (searchQuery[0] == L'\0') {
+		historyPopulateListBox(listBoxHwnd, historyHead, NULL);
+		return;
+	}
+	historyPopulateListBox(listBoxHwnd, historyHead, searchQuery);
+	int shownCount = (int)SendMessage(listBoxHwnd, LB_GETCOUNT, 0, 0);
+	int remaining = MAX_SEARCH_RESULTS - shownCount;
+	if (remaining > 0 && sessionSearch(searchQuery, remaining, &searchResults)) {
+		historyAppendSearchResults(listBoxHwnd, searchResults, searchQuery, historyHead);
+	}
+	else {
+		historyClear(&searchResults);
+	}
+}
+
+static void historyWindowPasteSelection(void) {
+	int index = (int)SendMessage(listBoxHwnd, LB_GETCURSEL, 0, 0);
+	if (index == LB_ERR) { return; }
+	LRESULT itemData = SendMessage(listBoxHwnd, LB_GETITEMDATA, index, 0);
+	if (itemData == LB_ERR || itemData == 0) { return; }
+	const ClipboardEntry* entry = (const ClipboardEntry*)itemData;
+	if (!clipboardSetText(historyHwnd, entry->text)) {
+		OutputDebugStringW(L"HistoryWndProc: failed to copy history entry to clipboard.\n");
+		return;
+	}
+	ShowWindow(historyHwnd, SW_HIDE);
+	pasteSimulate(pasteTargetWindow);
+}
+
+static LRESULT CALLBACK SearchBoxSubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData) {
+	switch (message) {
+	case WM_KEYDOWN:
+		if (wParam == VK_ESCAPE) {
+			if (searchQuery[0] != L'\0') { SetWindowTextW(hwnd, L""); }
+			else { historyWindowHide(); }
+			return 0;
+		}
+		if (wParam == VK_RETURN) {
+			historyWindowPasteSelection();
+			return 0;
+		}
+		if (wParam == VK_DOWN) {
+			int count = (int)SendMessage(listBoxHwnd, LB_GETCOUNT, 0, 0);
+			if (count > 0) {
+				SendMessage(listBoxHwnd, LB_SETCURSEL, 0, 0);
+				SetFocus(listBoxHwnd);
+			}
+			return 0;
+		}
+		break;
+	case WM_CHAR:
+		if (wParam == VK_RETURN || wParam == VK_ESCAPE) { return 0; }
+		break;
+	}
+	(void)subclassId;
+	(void)refData;
+	return DefSubclassProc(hwnd, message, wParam, lParam);
+}
+
+static LRESULT CALLBACK ListBoxSubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, UINT_PTR subclassId, DWORD_PTR refData) {
+	switch (message) {
+	case WM_KEYDOWN:
+		if (wParam == VK_RETURN) {
+			historyWindowPasteSelection();
+			return 0;
+		}
+		if (wParam == VK_ESCAPE) {
+			historyWindowHide();
+			return 0;
+		}
+		break;
+	}
+	(void)subclassId;
+	(void)refData;
+	return DefSubclassProc(hwnd, message, wParam, lParam);
+}
 
 static LRESULT CALLBACK HistoryWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
@@ -20,20 +110,14 @@ static LRESULT CALLBACK HistoryWndProc(HWND hwnd, UINT message, WPARAM wParam, L
 	}
 	case WM_COMMAND:
 	{
+		if (LOWORD(wParam) == SEARCHBOX_ID && HIWORD(wParam) == EN_CHANGE) {
+			int length = GetWindowTextW(searchBoxHwnd, searchQuery, SEARCH_QUERY_MAX);
+			searchQuery[length] = L'\0';
+			refreshHistoryList();
+			return 0;
+		}
 		if (LOWORD(wParam) == LISTBOX_ID && HIWORD(wParam) == LBN_DBLCLK) {
-			int index = (int)SendMessage(listBoxHwnd, LB_GETCURSEL, 0, 0);
-			if (index != LB_ERR) {
-				LRESULT itemData = SendMessage(listBoxHwnd, LB_GETITEMDATA, index, 0);
-				if (itemData != LB_ERR) {
-					const ClipboardEntry* entry = (const ClipboardEntry*)itemData;
-					if (!clipboardSetText(hwnd, entry->text)) {
-						OutputDebugStringW(L"HistoryWndProc: failed to copy history entry to clipboard.\n");
-						return 0;
-					}
-					ShowWindow(hwnd, SW_HIDE);
-					pasteSimulate(pasteTargetWindow);
-				}
-			}
+			historyWindowPasteSelection();
 		}
 		return 0;
 	}
@@ -41,7 +125,8 @@ static LRESULT CALLBACK HistoryWndProc(HWND hwnd, UINT message, WPARAM wParam, L
 	{
 		int width = LOWORD(lParam);
 		int height = HIWORD(lParam);
-		MoveWindow(listBoxHwnd, 10, 10, width - 20, height - 20, TRUE);
+		MoveWindow(searchBoxHwnd, 10, 10, width - 20, 28, TRUE);
+		MoveWindow(listBoxHwnd, 10, 46, width - 20, height - 56, TRUE);
 		return 0;
 	}
 	default:
@@ -78,12 +163,31 @@ bool historyWindowCreate(HINSTANCE hInstance) {
 		return false;
 	}
 
+	searchBoxHwnd = CreateWindowExW(
+		0,
+		L"EDIT",
+		NULL,
+		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
+		10, 10, 460, 28,
+		historyHwnd,
+		(HMENU)SEARCHBOX_ID,
+		hInstance,
+		NULL
+	);
+	if (searchBoxHwnd == NULL) {
+		OutputDebugStringW(L"historyWindowCreate: failed to create search box.\n");
+		DestroyWindow(historyHwnd);
+		historyHwnd = NULL;
+		return false;
+	}
+	SetWindowSubclass(searchBoxHwnd, SearchBoxSubclassProc, 1, 0);
+
 	listBoxHwnd = CreateWindowEx(
 		0,
 		L"LISTBOX",
 		NULL,
 		WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_BORDER | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
-		10, 10, 460, 330,
+		10, 46, 460, 292,
 		historyHwnd,
 		(HMENU)LISTBOX_ID,
 		hInstance,
@@ -95,11 +199,14 @@ bool historyWindowCreate(HINSTANCE hInstance) {
 		historyHwnd = NULL;
 		return false;
 	}
+	SetWindowSubclass(listBoxHwnd, ListBoxSubclassProc, 1, 0);
 
 	return true;
 }
+
 void historyWindowRefresh(const ClipboardEntry* head) {
-	historyPopulateListBox(listBoxHwnd, head);
+	historyHead = head;
+	refreshHistoryList();
 }
 
 void historyWindowHide(void) {
@@ -112,7 +219,11 @@ bool historyWindowIsVisible(void) {
 
 void historyWindowShow(const ClipboardEntry* head, HWND targetWindow) {
 	pasteTargetWindow = targetWindow;
-	historyWindowRefresh(head);
+	historyHead = head;
+	searchQuery[0] = L'\0';
+	SetWindowTextW(searchBoxHwnd, L"");
+	refreshHistoryList();
 	ShowWindow(historyHwnd, SW_SHOW);
 	SetForegroundWindow(historyHwnd);
+	SetFocus(searchBoxHwnd);
 }

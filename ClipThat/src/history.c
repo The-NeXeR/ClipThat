@@ -1,7 +1,30 @@
 #include "history.h"
 #include <stdlib.h>
 #include <wchar.h>
+#include <wctype.h>
 #include <time.h>
+
+static wchar_t normalizeChar(wchar_t c) {
+	if (c == L'\r' || c == L'\n' || c == L'\t') { return L' '; }
+	return c;
+}
+
+bool historyMatchesQuery(const wchar_t* text, const wchar_t* query) {
+	if (query == NULL || query[0] == L'\0') { return true; }
+	if (text == NULL) { return false; }
+	size_t queryLength = wcslen(query);
+	for (size_t start = 0; text[start] != L'\0'; start++) {
+		size_t i = 0;
+		while (i < queryLength) {
+			wchar_t textChar = normalizeChar(text[start + i]);
+			wchar_t queryChar = normalizeChar(query[i]);
+			if (textChar == L'\0' || towlower(textChar) != towlower(queryChar)) { break; }
+			i++;
+		}
+		if (i == queryLength) { return true; }
+	}
+	return false;
+}
 
 static wchar_t* dupString(const wchar_t* source)
 {

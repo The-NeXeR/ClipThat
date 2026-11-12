@@ -1,6 +1,8 @@
 #include "database.h"
 #include "sqlite3.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <wchar.h>
 #include <windows.h>
 #include "history.h"
 
@@ -210,8 +212,74 @@ bool databaseInit(Database* db) {
 	return true;
 }
 
-bool databaseTouchH(Database* db, const wchar_t* text, int maxCount) {
-	if (!db || !db->handle || !text || text[0] == L'\0' || maxCount < 1) return false;
+static bool appendHistoryEntry(ClipboardEntry** head, ClipboardEntry** tail, const wchar_t* content, long long firstCopied, long long lastUsed) {
+	ClipboardEntry* entry = calloc(1, sizeof(*entry));
+	if (entry == NULL) { return false; }
+	size_t length = wcslen(content) + 1;
+	entry->text = malloc(length * sizeof(wchar_t));
+	if (entry->text == NULL) {
+		free(entry);
+		return false;
+	}
+	wcscpy_s(entry->text, length, content);
+	entry->length = length - 1;
+	entry->firstCopied = firstCopied;
+	entry->lastUsed = lastUsed;
+	entry->next = NULL;
+	if (*head == NULL) {
+		*head = entry;
+	}
+	else {
+		(*tail)->next = entry;
+	}
+	*tail = entry;
+	return true;
+}
+
+bool databaseSearchH(Database* db, const wchar_t* query, int maxResults, ClipboardEntry** results) {
+	if (db == NULL || db->handle == NULL || results == NULL) { return false; }
+	*results = NULL;
+	if (query == NULL || query[0] == L'\0' || maxResults < 1) { return true; }
+
+	sqlite3_stmt* stmt = NULL;
+	const char* sql = "SELECT text, cDate, lastUsed FROM cHistory ORDER BY lastUsed DESC;";
+
+	int rc = sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL);
+	if (rc != SQLITE_OK) {
+		OutputDebugStringA("SQLite search prepare failed: ");
+		OutputDebugStringA(sqlite3_errmsg(db->handle));
+		return false;
+	}
+
+	ClipboardEntry* tail = NULL;
+	int matchCount = 0;
+	while (matchCount < maxResults) {
+		rc = sqlite3_step(stmt);
+		if (rc == SQLITE_DONE) { break; }
+		if (rc != SQLITE_ROW) {
+			OutputDebugStringA("SQLite search step failed: ");
+			OutputDebugStringA(sqlite3_errmsg(db->handle));
+			break;
+		}
+		const wchar_t* content = (const wchar_t*)sqlite3_column_text16(stmt, 0);
+		if (content == NULL || !historyMatchesQuery(content, query)) { continue; }
+		if (!appendHistoryEntry(results, &tail, content, sqlite3_column_int64(stmt, 1), sqlite3_column_int64(stmt, 2))) {
+			break;
+		}
+		matchCount++;
+	}
+
+	sqlite3_finalize(stmt);
+
+	if (rc != SQLITE_DONE && rc != SQLITE_ROW) {
+		historyClear(results);
+		return false;
+	}
+	return true;
+}
+
+bool databaseTouchH(Database* db, const wchar_t* text, int maxDbCount) {
+	if (!db || !db->handle || !text || text[0] == L'\0' || maxDbCount < 1) return false;
 
 	const char* upsertSql =
 		"INSERT INTO cHistory (text, cDate, lastUsed) "
@@ -252,7 +320,7 @@ bool databaseTouchH(Database* db, const wchar_t* text, int maxCount) {
 		OutputDebugStringA(sqlite3_errmsg(db->handle));
 		return false;
 	}
-	rc = sqlite3_bind_int(stmt, 1, maxCount);
+	rc = sqlite3_bind_int(stmt, 1, maxDbCount);
 	if (rc != SQLITE_OK) {
 		OutputDebugStringA("SQLite prune bind failed: ");
 		OutputDebugStringA(sqlite3_errmsg(db->handle));
@@ -271,109 +339,24 @@ bool databaseTouchH(Database* db, const wchar_t* text, int maxCount) {
 	return true;
 }
 
-bool databaseSaveH(Database* db, const ClipboardEntry* head) {
-	if (!db || !db->handle) return false;
-
-	int returnSQL = sqlite3_exec(db->handle, "BEGIN TRANSACTION;", NULL, NULL, NULL);
-	if (returnSQL != SQLITE_OK) {
-		OutputDebugStringA("SQLite transaction begin failed: ");
-		OutputDebugStringA(sqlite3_errmsg(db->handle));
-		return false;
-	}
-
-	returnSQL = sqlite3_exec(db->handle, "DELETE FROM cHistory;", NULL, NULL, NULL);
-	if (returnSQL != SQLITE_OK) {
-		OutputDebugStringA("SQLite delete failed: ");
-		OutputDebugStringA(sqlite3_errmsg(db->handle));
-		sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-		return false;
-	}
-	const char* sql = "INSERT INTO cHistory (text, cDate, lastUsed) VALUES (?1, ?2, ?3);";
-	sqlite3_stmt* stmt = NULL;
-
-	returnSQL = sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL);
-	if (returnSQL != SQLITE_OK) {
-		OutputDebugStringA("SQLite prepare failed: ");
-		OutputDebugStringA(sqlite3_errmsg(db->handle));
-		sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-		return false;
-	}
-
-	//I don't know if it's gonna be optimized but for SQLite return code audit is important
-	for (const ClipboardEntry* entry = head; entry != NULL; entry = entry->next) {
-		returnSQL = sqlite3_bind_text16(stmt, 1, entry->text, -1, SQLITE_TRANSIENT);
-		if (returnSQL != SQLITE_OK) {
-			OutputDebugStringA("SQLite bind failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-		returnSQL = sqlite3_bind_int64(stmt, 2, entry->firstCopied);
-		if (returnSQL != SQLITE_OK) {
-			OutputDebugStringA("SQLite bind failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-		returnSQL = sqlite3_bind_int64(stmt, 3, entry->lastUsed);
-		if (returnSQL != SQLITE_OK) {
-			OutputDebugStringA("SQLite bind failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-		returnSQL = sqlite3_step(stmt);
-		if (returnSQL != SQLITE_DONE) {
-			OutputDebugStringA("SQLite step failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-		returnSQL = sqlite3_reset(stmt);
-		if (returnSQL != SQLITE_OK) {
-			OutputDebugStringA("SQLite reset failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-		returnSQL = sqlite3_clear_bindings(stmt);
-		if (returnSQL != SQLITE_OK) {
-			OutputDebugStringA("SQLite clear bindings failed: ");
-			OutputDebugStringA(sqlite3_errmsg(db->handle));
-			sqlite3_finalize(stmt);
-			sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-			return false;
-		}
-	}
-
-	sqlite3_finalize(stmt);
-	returnSQL = sqlite3_exec(db->handle, "COMMIT;", NULL, NULL, NULL);
-	if (returnSQL != SQLITE_OK) {
-		OutputDebugStringA("SQLite commit failed: ");
-		OutputDebugStringA(sqlite3_errmsg(db->handle));
-		OutputDebugStringA("\n");
-		sqlite3_exec(db->handle, "ROLLBACK;", NULL, NULL, NULL);
-		return false;
-	}
-	return true;
-}
-
-bool databaseLoadH(Database* db, ClipboardEntry** head) {
-	if (!db || !db->handle || !head) return false;
+bool databaseLoadH(Database* db, ClipboardEntry** head, int limit) {
+	if (db == NULL || db->handle == NULL || head == NULL || limit < 1) { return false; }
 
 	*head = NULL;
 	ClipboardEntry* tail = NULL;
 
 	sqlite3_stmt* stmt = NULL;
-	const char* sql = "SELECT text, cDate, lastUsed FROM cHistory ORDER BY lastUsed DESC;";
+	const char* sql = "SELECT text, cDate, lastUsed FROM cHistory ORDER BY lastUsed DESC LIMIT ?1;";
 
 	int rc = sqlite3_prepare_v2(db->handle, sql, -1, &stmt, NULL);
 	if (rc != SQLITE_OK) { return false; }
+
+	rc = sqlite3_bind_int(stmt, 1, limit);
+	if (rc != SQLITE_OK) {
+		sqlite3_finalize(stmt);
+		return false;
+	}
+
 	bool done = true;
 	while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
 		const wchar_t* content = (const wchar_t*)sqlite3_column_text16(stmt, 0);
@@ -381,24 +364,10 @@ bool databaseLoadH(Database* db, ClipboardEntry** head) {
 			done = false;
 			break;
 		}
-		ClipboardEntry* entry = calloc(1, sizeof(*entry));
-		if (!entry) { done = false; break; }
-		size_t len = wcslen(content) + 1;
-		entry->text = malloc(len * sizeof(wchar_t));
-		if (!entry->text) {
-			free(entry);
+		if (!appendHistoryEntry(head, &tail, content, sqlite3_column_int64(stmt, 1), sqlite3_column_int64(stmt, 2))) {
 			done = false;
 			break;
 		}
-		wcscpy_s(entry->text, len, content);
-		entry->length = len - 1;
-		entry->firstCopied = sqlite3_column_int64(stmt, 1);
-		entry->lastUsed = sqlite3_column_int64(stmt, 2);
-		entry->next = NULL;
-
-		if (!*head) *head = entry;
-		else tail->next = entry;
-		tail = entry;
 	}
 
 	sqlite3_finalize(stmt);
