@@ -1,5 +1,6 @@
 #include "trayIcon.h"
 #include <wchar.h>
+#include <stdlib.h> // _TRUNCATE
 
 static NOTIFYICONDATA nid = { 0 };
 static bool iconAdded = false;
@@ -18,14 +19,28 @@ bool trayIconCreate(HWND ownerHWND) {
 	return true;
 }
 
+bool trayIconNotify(const wchar_t* title, const wchar_t* message) {
+	if (!iconAdded) return false;
+	nid.uFlags = NIF_INFO;
+	// _TRUNCATE: a too-long message must degrade to a truncated hint, not abort the app
+	wcscpy_s(nid.szInfoTitle, _TRUNCATE, title);
+	wcscpy_s(nid.szInfo, _TRUNCATE, message);
+	nid.dwInfoFlags = NIIF_INFO | NIIF_RESPECT_QUIET_TIME;
+
+	bool success = Shell_NotifyIconW(NIM_MODIFY, &nid);
+
+	// Restore the normal tray icon configuration.
+	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+
+	return success;
+}
+
 void trayIconDestroy(void) {
 	if (!iconAdded) return;
 	Shell_NotifyIcon(NIM_DELETE, &nid);
 	iconAdded = false;
 }
 
-// Message broadcast by Explorer whenever the taskbar is (re)created.
-// When it arrives, the tray icon has been removed and must be re-added.
 UINT trayIconTaskbarCreatedMessage(void) {
 	return RegisterWindowMessageW(L"TaskbarCreated");
 }

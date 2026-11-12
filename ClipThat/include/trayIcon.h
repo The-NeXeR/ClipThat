@@ -14,6 +14,6 @@ void trayIconDestroy(void);
 void trayIconRestore(void);
 void trayIconShowContextMenu(HWND ownerHWND);
 UINT trayIconTaskbarCreatedMessage(void);
-
+bool trayIconNotify(const wchar_t* title, const wchar_t* message);
 
 #endif // !TRAY_ICON_H

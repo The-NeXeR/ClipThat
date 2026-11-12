@@ -83,7 +83,7 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 
 	default:
 		if (taskbarCreatedMsg != 0 && message == taskbarCreatedMsg) {
-			trayIconRestore(); // Explorer restarted; re-add the tray icon
+			trayIconRestore();
 			return 0;
 		}
 		return DefWindowProc(hwnd, message, wParam, lParam);
