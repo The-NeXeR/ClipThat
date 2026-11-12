@@ -17,10 +17,6 @@ ClipThat runs in the system tray and saves your clipboard history so you can acc
 - UTF-16 clipboard support
 - No external runtime dependencies
 
-## Current Version
-
-**v1.0.1**
-
 ## How It Works
 
 ClipThat uses the Windows Clipboard Listener API to detect clipboard changes.
