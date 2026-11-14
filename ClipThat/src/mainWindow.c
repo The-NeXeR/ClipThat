@@ -8,7 +8,6 @@
 #include "config.h"
 
 #define HOTKEY_SHOW_HISTORY 1
-#define MAIN_WINDOW_CLASS_NAME L"MyWindow"
 
 static ClipboardEntry* head = NULL;
 static HWND lastForegroundWindow = NULL;
@@ -48,6 +47,10 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 				historyWindowShow(head, lastForegroundWindow);
 			}
 		}
+		return 0;
+	case WM_CLIPTHAT_SHOW:
+		lastForegroundWindow = GetForegroundWindow();
+		historyWindowShow(head, lastForegroundWindow);
 		return 0;
 
 	case WM_COMMAND:

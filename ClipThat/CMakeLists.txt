@@ -41,6 +41,7 @@ add_executable(ClipThat WIN32
     src/paste.c
     src/path.c
     src/session.c
+    src/singleInstanceguard.c
     src/startup.c
     src/trayIcon.c
     resources/ClipThat.rc

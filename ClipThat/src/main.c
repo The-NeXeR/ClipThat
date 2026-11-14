@@ -3,6 +3,7 @@
 #include "historyWindow.h"
 #include "startup.h"
 #include "trayIcon.h"
+#include "singleInstanceguard.h"
 
 
 int WINAPI WinMain(
@@ -15,6 +16,13 @@ int WINAPI WinMain(
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
     UNREFERENCED_PARAMETER(nCmdShow);
+    if (singleInstanceGuard()) {
+        HWND existingW = FindWindowW(MAIN_WINDOW_CLASS_NAME, NULL);
+        if (existingW != NULL) {
+            PostMessageW(existingW, WM_CLIPTHAT_SHOW, 0, 0);
+        }
+        return 0;
+    }
     if (!historyWindowCreate(hInstance)) {
         MessageBoxW(NULL, L"Failed to create the history window.", L"ClipThat - Startup Error", MB_ICONERROR);
         return 1;
@@ -39,5 +47,6 @@ int WINAPI WinMain(
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+    singleInstanceRelease();
     return (int)msg.wParam;
 }
