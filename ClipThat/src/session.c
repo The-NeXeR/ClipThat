@@ -1,7 +1,7 @@
 #include "session.h"
 #include "database.h"
 #include "path.h"
-#include "config.h"
+#include "settings.h"
 #include <stdlib.h>
 #include <Windows.h>
 
@@ -22,7 +22,7 @@ bool sessionInit(ClipboardEntry** head) {
 		OutputDebugStringW(L"sessionInit: failed to create database.\n");
 		return false;
 	}
-	if (!databaseLoadH(db, head, MAX_HISTORY_COUNT)) {
+	if (!databaseLoadH(db, head, settingsGet()->ramHistoryCount)) {
 		OutputDebugStringW(L"sessionInit: failed to load existing history.\n");
 		sessionShutdown();
 		return false;

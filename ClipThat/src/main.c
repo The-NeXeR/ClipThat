@@ -4,6 +4,8 @@
 #include "startup.h"
 #include "trayIcon.h"
 #include "singleInstanceguard.h"
+#include "settings.h"
+#include <stdio.h>
 
 
 int WINAPI WinMain(
@@ -23,22 +25,26 @@ int WINAPI WinMain(
         }
         return 0;
     }
+    bool firstRun = !settingsLoad();
     if (!historyWindowCreate(hInstance)) {
         MessageBoxW(NULL, L"Failed to create the history window.", L"ClipThat - Startup Error", MB_ICONERROR);
         return 1;
     }
-    // Check BEFORE startupEnable() writes the Run key: an absent entry means
-    // this is the first launch, which is the only time the hint should show.
-    bool firstRun = !startupIsEnabled();
     if (!mainWindowCreate(hInstance)) { return 1; }
-    if (!startupEnable()) {
-        OutputDebugStringW(L"WinMain: failed to register ClipThat for Windows startup.\n");
+    if (settingsGet()->startWithWindows) {
+        if (!startupEnable()) {
+            OutputDebugStringW(L"WinMain: failed to register ClipThat for Windows startup.\n");
+        }
+    }
+    else if (!startupDisable()) {
+        OutputDebugStringW(L"WinMain: failed to unregister ClipThat from Windows startup.\n");
     }
     if (firstRun) {
-        if (!trayIconNotify(
-            L"ClipThat",
-            L"ClipThat is running in your system tray. Press Ctrl+Alt+H to open your clipboard history."
-        )) {
+        wchar_t hotkeyText[64];
+        settingsHotkeyText(hotkeyText, 64);
+        wchar_t hint[256];
+        swprintf_s(hint, 256, L"ClipThat is running in your system tray. Press %s to open your clipboard history.", hotkeyText);
+        if (!trayIconNotify(L"ClipThat", hint)) {
             OutputDebugStringW(L"WinMain: failed to show the first-run tray notification.\n");
         }
     }

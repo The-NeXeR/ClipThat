@@ -5,6 +5,7 @@
 #include "clipboard.h"
 #include "session.h"
 #include "config.h"
+#include "settings.h"
 #include "resources.h"
 #include <commctrl.h>
 
@@ -30,7 +31,7 @@ static void refreshHistoryList(void) {
 	}
 	historyPopulateListBox(listBoxHwnd, historyHead, searchQuery);
 	int shownCount = (int)SendMessage(listBoxHwnd, LB_GETCOUNT, 0, 0);
-	int remaining = MAX_SEARCH_RESULTS - shownCount;
+	int remaining = settingsGet()->searchResultLimit - shownCount;
 	if (remaining > 0 && sessionSearch(searchQuery, remaining, &searchResults)) {
 		historyAppendSearchResults(listBoxHwnd, searchResults, searchQuery, historyHead);
 	}

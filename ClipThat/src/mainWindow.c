@@ -5,7 +5,8 @@
 #include "history.h"
 #include "session.h"
 #include "resources.h"
-#include "config.h"
+#include "settings.h"
+#include <stdio.h>
 
 #define HOTKEY_SHOW_HISTORY 1
 
@@ -74,8 +75,8 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 	case WM_CLIPBOARDUPDATE:
 	{
 		ClipboardEntry* previousHead = head;
-		if (clipboardHandleUpdate(hwnd, &head, MAX_HISTORY_COUNT) && head != previousHead) {
-			sessionTouch(head->text, MAX_DB_HISTORY);
+		if (clipboardHandleUpdate(hwnd, &head, settingsGet()->ramHistoryCount) && head != previousHead) {
+			sessionTouch(head->text, settingsGet()->dbHistoryCount);
 			historyWindowRefresh(head);
 		}
 		return 0;
@@ -131,8 +132,12 @@ bool mainWindowCreate(HINSTANCE hInstance) {
 		DestroyWindow(hwnd);
 		return false;
 	}
-	if (!RegisterHotKey(hwnd, HOTKEY_SHOW_HISTORY, MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'H')) {
-		MessageBoxW(NULL, L"Failed to register hotkey.", L"ClipThat - Startup Warning", MB_ICONWARNING);
+	if (!RegisterHotKey(hwnd, HOTKEY_SHOW_HISTORY, settingsGet()->hotkeyModifiers | MOD_NOREPEAT, settingsGet()->hotkeyKey)) {
+		wchar_t hotkeyText[64];
+		settingsHotkeyText(hotkeyText, 64);
+		wchar_t warning[256];
+		swprintf_s(warning, 256, L"Hotkey %s is in use or reserved. ClipThat still works - use the tray icon, or edit settings.ini to change it.", hotkeyText);
+		trayIconNotify(L"ClipThat", warning);
 	}
 	if (!AddClipboardFormatListener(hwnd)) {
 		MessageBoxW(NULL, L"Failed to register clipboard listener.", L"ClipThat - Startup Error", MB_ICONERROR);
