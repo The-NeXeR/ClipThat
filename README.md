@@ -16,6 +16,8 @@ ClipThat runs in the system tray and saves your clipboard history so you can acc
 - SQLite persistence
 - UTF-16 clipboard support
 - No external runtime dependencies
+- Settings (custom hotkeys and more)
+- Search through your copied texts
 
 ## How It Works
 
