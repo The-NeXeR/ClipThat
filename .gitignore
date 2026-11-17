@@ -61,3 +61,6 @@ Thumbs.db
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+
+# Local planning notes (not part of the repo)
+ROADMAP.md
