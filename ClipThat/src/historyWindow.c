@@ -50,6 +50,7 @@ static void historyWindowPasteSelection(void) {
 		OutputDebugStringW(L"HistoryWndProc: failed to copy history entry to clipboard.\n");
 		return;
 	}
+	sessionTouch(entry->text, settingsGet()->dbHistoryCount);
 	ShowWindow(historyHwnd, SW_HIDE);
 	pasteSimulate(pasteTargetWindow);
 }
@@ -109,6 +110,11 @@ static LRESULT CALLBACK HistoryWndProc(HWND hwnd, UINT message, WPARAM wParam, L
 		ShowWindow(hwnd, SW_HIDE);
 		return 0;
 	}
+	case WM_ACTIVATE:
+		if (LOWORD(wParam) == WA_INACTIVE && IsWindowVisible(hwnd)) {
+			ShowWindow(hwnd, SW_HIDE);
+		}
+		return 0;
 	case WM_COMMAND:
 	{
 		if (LOWORD(wParam) == SEARCHBOX_ID && HIWORD(wParam) == EN_CHANGE) {
