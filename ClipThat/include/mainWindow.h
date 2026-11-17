@@ -3,9 +3,13 @@
 
 #include <Windows.h>
 #include <stdbool.h>
+#include "clipboard.h"
+
+
 #define WM_CLIPTHAT_SHOW (WM_APP + 1)
 #define MAIN_WINDOW_CLASS_NAME L"MyWindow"
 
 bool mainWindowCreate(HINSTANCE hInstance);
+void mainWindowEntry(const ClipboardEntry* entry);
 
 #endif // !MAIN_WINDOW_H

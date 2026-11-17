@@ -9,6 +9,7 @@
 #define DEFAULT_RAM_HISTORY_COUNT 50
 #define DEFAULT_DB_HISTORY_COUNT 15000
 #define DEFAULT_SEARCH_RESULT_LIMIT 1000
+#define DEFAULT_MAX_ENTRY_CHARS 100000
 #define DEFAULT_HOTKEY_MODIFIERS (MOD_CONTROL | MOD_ALT)
 #define DEFAULT_HOTKEY_KEY 0x48
 
@@ -16,6 +17,7 @@ static Settings current = {
 	DEFAULT_RAM_HISTORY_COUNT,
 	DEFAULT_DB_HISTORY_COUNT,
 	DEFAULT_SEARCH_RESULT_LIMIT,
+	DEFAULT_MAX_ENTRY_CHARS,
 	DEFAULT_HOTKEY_MODIFIERS,
 	DEFAULT_HOTKEY_KEY,
 	true
@@ -38,7 +40,7 @@ static bool parseDigits(const char* text, long* outValue) {
 	for (const char* ptr = text; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9') return false;
 		value = value * 10 + (*ptr - '0');
-		if (value > 100000) return false;
+		if (value > 1000000) return false;
 	}
 	*outValue = value;
 	return true;
@@ -161,6 +163,9 @@ static void applyLine(const char* line) {
 	else if (strcmp(name, "searchresultlimit") == 0) {
 		applyCount(valueBuffer, &current.searchResultLimit, DEFAULT_SEARCH_RESULT_LIMIT, 50, 5000);
 	}
+	else if (strcmp(name, "maxentrychars") == 0) {
+		applyCount(valueBuffer, &current.maxEntryChars, DEFAULT_MAX_ENTRY_CHARS, 100, 1000000);
+	}
 	else if (strcmp(name, "startwithwindows") == 0) {
 		if (!parseBoolean(valueBuffer, &current.startWithWindows)) { current.startWithWindows = true; }
 	}
@@ -276,12 +281,14 @@ bool settingsSave(void) {
 		"ramHistoryCount=%d\r\n"
 		"dbHistoryCount=%d\r\n"
 		"searchResultLimit=%d\r\n"
+		"maxEntryChars=%d\r\n"
 		"startWithWindows=%s\r\n"
 		"hotkeyModifiers=%s\r\n"
 		"hotkeyKey=%s\r\n",
 		current.ramHistoryCount,
 		current.dbHistoryCount,
 		current.searchResultLimit,
+		current.maxEntryChars,
 		current.startWithWindows ? "true" : "false",
 		modifiersText,
 		keyText);

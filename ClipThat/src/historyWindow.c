@@ -7,6 +7,7 @@
 #include "config.h"
 #include "settings.h"
 #include "resources.h"
+#include "mainWindow.h"
 #include <commctrl.h>
 
 #define LISTBOX_ID 2000
@@ -50,7 +51,7 @@ static void historyWindowPasteSelection(void) {
 		OutputDebugStringW(L"HistoryWndProc: failed to copy history entry to clipboard.\n");
 		return;
 	}
-	sessionTouch(entry->text, settingsGet()->dbHistoryCount);
+	mainWindowEntry(entry);
 	ShowWindow(historyHwnd, SW_HIDE);
 	pasteSimulate(pasteTargetWindow);
 }

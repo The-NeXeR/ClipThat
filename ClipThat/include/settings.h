@@ -9,6 +9,7 @@ typedef struct Settings {
 	int ramHistoryCount;
 	int dbHistoryCount;
 	int searchResultLimit;
+	int maxEntryChars;
 	unsigned int hotkeyModifiers;
 	unsigned int hotkeyKey;
 	bool startWithWindows;

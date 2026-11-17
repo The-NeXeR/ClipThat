@@ -34,7 +34,7 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 	case WM_TRAYICON:
 		if (lParam == WM_RBUTTONUP) {
 			lastForegroundWindow = GetForegroundWindow();
-			trayIconShowContextMenu(hwnd);
+			trayIconShowContextMenu(hwnd, clipboardPauseStatus());
 		}
 		return 0;
 
@@ -63,6 +63,10 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 				historyWindowRefresh(head);
 			}
 			break;
+		case ID_TRAY_PAUSE_CAPTURE:
+			clipboardPause(!clipboardPauseStatus());
+			trayIconSetTip(clipboardPauseStatus() ? L"ClipThat (Paused)" : L"ClipThat");
+			break;
 		case ID_TRAY_SHOW_HISTORY:
 			historyWindowShow(head, lastForegroundWindow);
 			break;
@@ -75,9 +79,15 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 	case WM_CLIPBOARDUPDATE:
 	{
 		ClipboardEntry* previousHead = head;
-		if (clipboardHandleUpdate(hwnd, &head, settingsGet()->ramHistoryCount) && head != previousHead) {
-			sessionTouch(head->text, settingsGet()->dbHistoryCount);
-			historyWindowRefresh(head);
+		bool entrySkipped = false;
+		if (clipboardHandleUpdate(hwnd, &head, settingsGet()->ramHistoryCount, (size_t)settingsGet()->maxEntryChars, &entrySkipped)) {
+			if (entrySkipped) {
+				trayIconNotify(L"ClipThat", L"Skipped a large entry, raise maxEntryChars in settings.ini to keep those copies.");
+			}
+			else if (head != previousHead) {
+				sessionTouch(head->text, settingsGet()->dbHistoryCount);
+				historyWindowRefresh(head);
+			}
 		}
 		return 0;
 	}
@@ -89,6 +99,12 @@ static LRESULT CALLBACK MainWndProc(HWND hwnd, UINT message, WPARAM wParam, LPAR
 		}
 		return DefWindowProc(hwnd, message, wParam, lParam);
 	}
+}
+void mainWindowEntry(const ClipboardEntry* entry) {
+	if (entry == NULL || entry->text == NULL) { return; }
+	if (!historyAdd(&head, entry->text)) { return; }
+	sessionTouch(head->text, settingsGet()->dbHistoryCount);
+	historyWindowRefresh(head);
 }
 
 bool mainWindowCreate(HINSTANCE hInstance) {

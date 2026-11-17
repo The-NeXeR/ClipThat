@@ -41,7 +41,11 @@ bool trayIconNotify(const wchar_t* title, const wchar_t* message) {
 
 	return success;
 }
-
+bool trayIconSetTip(const wchar_t* tip) {
+	if (!iconAdded) { return false; }
+	wcscpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(wchar_t), tip);
+	return Shell_NotifyIcon(NIM_MODIFY, &nid) != FALSE;
+}
 void trayIconDestroy(void) {
 	if (!iconAdded) return;
 	Shell_NotifyIcon(NIM_DELETE, &nid);
@@ -57,10 +61,11 @@ void trayIconRestore(void) {
 	if (Shell_NotifyIcon(NIM_ADD, &nid)) { iconAdded = true; }
 }
 
-void trayIconShowContextMenu(HWND ownerHwnd) {
+void trayIconShowContextMenu(HWND ownerHwnd, bool paused) {
 	HMENU hMenu = CreatePopupMenu();
 	if (hMenu == NULL) { return; }
 	AppendMenuW(hMenu, MF_STRING, ID_TRAY_SHOW_HISTORY, L"Show History");
+	AppendMenuW(hMenu, MF_STRING, ID_TRAY_PAUSE_CAPTURE, paused ? L"Resume Capture" : L"Pause Capture");
 	AppendMenuW(hMenu, MF_STRING, ID_TRAY_FLUSH_HISTORY, L"Delete History");
 	AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
 	AppendMenuW(hMenu, MF_STRING, ID_TRAY_EXIT, L"Exit");

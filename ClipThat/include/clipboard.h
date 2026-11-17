@@ -15,7 +15,9 @@ typedef struct ClipboardEntry {
     struct ClipboardEntry* next;
 } ClipboardEntry;
 
-bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryCount);
+bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryCount, size_t maxEntryChars, bool* entrySkipped);
 bool clipboardSetText(HWND owner, const wchar_t* text);
+void clipboardPause(bool paused);
+bool clipboardPauseStatus(void);
 
 #endif

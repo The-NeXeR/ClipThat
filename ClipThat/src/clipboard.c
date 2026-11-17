@@ -8,6 +8,7 @@
 
 static UINT clipboardSeq = 0;
 static bool clipboardPending = false;
+static bool clipboardPaused = false;
 
 static bool clipboardOpen(HWND owner) {
 	enum {MAX_ATTEMP = 5,
@@ -44,7 +45,7 @@ bool clipboardSetText(HWND owner, const wchar_t* text) {
 	if (!GlobalUnlock(gMem)) {
 		DWORD err = GetLastError();
 		if (err != NO_ERROR) {
-			clipText = NULL; // already unlocked (or failed to); avoid double GlobalUnlock in cleanup
+			clipText = NULL; // already unlocked
 			goto cleanup;
 		}
 	}
@@ -62,14 +63,25 @@ cleanup:
 	CloseClipboard();
 	return success;
 }
-bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryCount) {
+void clipboardPause(bool paused) {
+	clipboardPaused = paused;
+}
+
+bool clipboardPauseStatus(void) {
+	return clipboardPaused;
+}
+
+bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryCount, size_t maxEntryChars, bool* entrySkipped) {
 	if (head == NULL) { return false; }
+	if (entrySkipped != NULL) { *entrySkipped = false; }
+
 	UINT currentSeq = GetClipboardSequenceNumber();
 	if (clipboardPending && currentSeq == clipboardSeq) {
 		clipboardPending = false;
 		return true;
 	}
 	clipboardPending = false;
+	if (clipboardPaused) { return true; }
 	if (!clipboardOpen(owner)) {
 		return false;
 	}
@@ -78,6 +90,12 @@ bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryC
 	if (dataHandle == NULL) { CloseClipboard(); return true; }
 	wchar_t* text = GlobalLock(dataHandle);
 	if (text == NULL) { CloseClipboard(); return false; }
+	if (maxEntryChars != 0 && wcslen(text) > maxEntryChars) {
+		GlobalUnlock(dataHandle);
+		CloseClipboard();
+		if (entrySkipped != NULL) { *entrySkipped = true; }
+		return true;
+	}
 	if (!historyAdd(head, text)) {
 		GlobalUnlock(dataHandle);
 		CloseClipboard();
