@@ -7,7 +7,7 @@
 
 
 #define WM_CLIPTHAT_SHOW (WM_APP + 1)
-#define MAIN_WINDOW_CLASS_NAME L"MyWindow"
+#define MAIN_WINDOW_CLASS_NAME L"ClipThatMainWindow"
 
 bool mainWindowCreate(HINSTANCE hInstance);
 void mainWindowEntry(const ClipboardEntry* entry);

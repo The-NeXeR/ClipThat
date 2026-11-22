@@ -53,14 +53,18 @@ bool clipboardSetText(HWND owner, const wchar_t* text) {
 	if (SetClipboardData(CF_UNICODETEXT, gMem) == NULL) { goto cleanup; }
 	gMem = NULL;
 
-	clipboardSeq = GetClipboardSequenceNumber();
-	clipboardPending = true;
+	//clipboardSeq = GetClipboardSequenceNumber();
+	//clipboardPending = true;
 	success = true;
 
 cleanup:
 	if (clipText != NULL) { GlobalUnlock(gMem); }
 	if (gMem != NULL) { GlobalFree(gMem); }
 	CloseClipboard();
+	if (success) {
+		clipboardSeq = GetClipboardSequenceNumber();
+		clipboardPending = true;
+	}
 	return success;
 }
 void clipboardPause(bool paused) {
@@ -74,7 +78,6 @@ bool clipboardPauseStatus(void) {
 bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryCount, size_t maxEntryChars, bool* entrySkipped) {
 	if (head == NULL) { return false; }
 	if (entrySkipped != NULL) { *entrySkipped = false; }
-
 	UINT currentSeq = GetClipboardSequenceNumber();
 	if (clipboardPending && currentSeq == clipboardSeq) {
 		clipboardPending = false;
@@ -85,25 +88,56 @@ bool clipboardHandleUpdate(HWND owner, ClipboardEntry** head, size_t maxHistoryC
 	if (!clipboardOpen(owner)) {
 		return false;
 	}
-	bool success = false;
 	HANDLE dataHandle = GetClipboardData(CF_UNICODETEXT);
-	if (dataHandle == NULL) { CloseClipboard(); return true; }
-	wchar_t* text = GlobalLock(dataHandle);
-	if (text == NULL) { CloseClipboard(); return false; }
-	if (maxEntryChars != 0 && wcslen(text) > maxEntryChars) {
+	if (dataHandle == NULL) {
+		CloseClipboard();
+		return true;
+	}
+	SIZE_T byteSize = GlobalSize(dataHandle);
+	size_t maxChars = (size_t)(byteSize / sizeof(wchar_t));
+	if (maxChars == 0) {
+		CloseClipboard();
+		return true;
+	}
+	const wchar_t* text = (const wchar_t*)GlobalLock(dataHandle);
+	if (text == NULL) {
+		CloseClipboard();
+		return false;
+	}
+	size_t scanLimit = maxChars;
+	if (maxEntryChars != 0 && maxEntryChars < SIZE_MAX && scanLimit > maxEntryChars + 1) {
+		scanLimit = maxEntryChars + 1;
+	}
+	size_t len = wcsnlen(text, scanLimit);
+	if (maxEntryChars != 0 && len > maxEntryChars) {
 		GlobalUnlock(dataHandle);
 		CloseClipboard();
 		if (entrySkipped != NULL) { *entrySkipped = true; }
 		return true;
 	}
-	if (!historyAdd(head, text)) {
+	if (len == 0) {
+		GlobalUnlock(dataHandle);
+		CloseClipboard();
+		return true;
+	}
+	if (len > (SIZE_MAX / sizeof(wchar_t)) - 1) {
 		GlobalUnlock(dataHandle);
 		CloseClipboard();
 		return false;
 	}
-	historyLimit(head, maxHistoryCount);
+	wchar_t* copy = malloc((len + 1) * sizeof(wchar_t));
+	if (copy == NULL) {
+		GlobalUnlock(dataHandle);
+		CloseClipboard();
+		return false;
+	}
+	memcpy(copy, text, len * sizeof(wchar_t));
+	copy[len] = L'\0';
 	GlobalUnlock(dataHandle);
 	CloseClipboard();
-	success = true;
-	return success;
+	bool added = historyAdd(head, copy);
+	free(copy);
+	if (!added) { return false; }
+	historyLimit(head, maxHistoryCount);
+	return true;
 }

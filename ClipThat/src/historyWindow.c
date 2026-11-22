@@ -12,7 +12,7 @@
 
 #define LISTBOX_ID 2000
 #define SEARCHBOX_ID 2001
-#define CLASS_NAME L"HistoryWindow"
+#define CLASS_NAME L"ClipThatHistoryWindow"
 
 static HWND historyHwnd = NULL;
 static HWND listBoxHwnd = NULL;

@@ -88,24 +88,12 @@ static bool parseModifiers(const char* value, unsigned int* outValue) {
 	*outValue = result;
 	return true;
 }
-
+static bool modifierVKchecker(unsigned int vk) {
+	return vk == VK_SHIFT || vk == VK_CONTROL || vk == VK_MENU || vk == VK_LWIN || vk == VK_RWIN || (vk >= VK_LSHIFT && vk <= VK_RMENU);
+}
 static bool parseKeys(const char* value, unsigned int* outValue) {
-	long number = 0;
-	if (parseDigits(value, &number)) {
-		if (number >= 0x08 && number <= 0xFE) {
-			*outValue = (unsigned int)number;
-			return true;
-		}
-		return false;
-	}
+	if (value == NULL || outValue == NULL) { return false; }
 	size_t length = strlen(value);
-	if (length >= 2 && (value[0] == 'F' || value[0] == 'f')) {
-		if (parseDigits(value + 1, &number) && number >= 1 && number <= 24) {
-			*outValue = (unsigned int)(0x70 + number - 1);
-			return true;
-		}
-		return false;
-	}
 	if (length == 1) {
 		char c = value[0];
 		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
@@ -116,6 +104,22 @@ static bool parseKeys(const char* value, unsigned int* outValue) {
 			*outValue = (unsigned int)c;
 			return true;
 		}
+		return false;
+	}
+	long number = 0;
+	if (length >= 2 && (value[0] == 'F' || value[0] == 'f')) {
+		if (parseDigits(value + 1, &number) && number >= 1 && number <= 24) {
+			*outValue = (unsigned int)(0x70 + number - 1);
+			return true;
+		}
+		return false;
+	}
+	if (parseDigits(value, &number)) {
+		if (number >= 0x08 && number <= 0xFE && !modifierVKchecker((unsigned int)number)) {
+			*outValue = (unsigned int)number;
+			return true;
+		}
+		return false;
 	}
 	return false;
 }
@@ -195,33 +199,40 @@ static bool readFile(const wchar_t* path, char** data, size_t* length) {
 }
 
 static void buildModifiersText(unsigned int modifiers, char* buffer, size_t bufferSize) {
+	if (buffer == NULL || bufferSize == 0) { return; }
 	const char* labels[4] = { "Ctrl", "Alt", "Shift", "Win" };
 	const unsigned int flags[4] = { MOD_CONTROL, MOD_ALT, MOD_SHIFT, MOD_WIN };
 	size_t offset = 0;
 	for (int i = 0; i < 4; i++) {
 		if ((modifiers & flags[i]) != 0) {
-			if (offset > 0 && offset < bufferSize) { buffer[offset++] = '+'; }
 			size_t labelLength = strlen(labels[i]);
-			if (offset + labelLength < bufferSize) {
-				memcpy(buffer + offset, labels[i], labelLength);
-				offset += labelLength;
-			}
+			size_t needed = (offset > 0 ? 1 : 0) + labelLength;
+			if (offset + needed >= bufferSize) { break; }
+			if (offset > 0) { buffer[offset++] = '+'; }
+			memcpy(buffer + offset, labels[i], labelLength);
+			offset += labelLength;
 		}
 	}
 	buffer[offset] = '\0';
 }
 
 static void buildKeyText(unsigned int key, char* buffer, size_t bufferSize) {
+	if (buffer == NULL || bufferSize == 0) { return; }
 	if ((key >= 0x30 && key <= 0x39) || (key >= 0x41 && key <= 0x5A)) {
-		buffer[0] = (char)key;
-		buffer[1] = '\0';
+		if (bufferSize >= 2) {
+			buffer[0] = (char)key;
+			buffer[1] = '\0';
+		}
+		else {
+			buffer[0] = '\0';
+		}
 		return;
 	}
 	if (key >= 0x70 && key <= 0x87) {
-		sprintf_s(buffer, bufferSize, "F%u", key - 0x70 + 1);
+		_snprintf_s(buffer, bufferSize, _TRUNCATE, "F%u", key - 0x70 + 1);
 		return;
 	}
-	sprintf_s(buffer, bufferSize, "%u", key);
+	_snprintf_s(buffer, bufferSize, _TRUNCATE, "%u", key);
 }
 
 
@@ -309,6 +320,7 @@ const Settings* settingsGet(void) {
 }
 
 void settingsHotkeyText(wchar_t* buffer, size_t bufferSize) {
+	if (buffer == NULL || bufferSize == 0) { return; }
 	char modifiersText[32];
 	char keyText[16];
 	wchar_t wideModifiers[32];
@@ -321,5 +333,5 @@ void settingsHotkeyText(wchar_t* buffer, size_t bufferSize) {
 	wideModifiers[modifiersLength] = L'\0';
 	for (size_t i = 0; i < keyLength; i++) { wideKey[i] = (wchar_t)keyText[i]; }
 	wideKey[keyLength] = L'\0';
-	swprintf_s(buffer, bufferSize, L"%s+%s", wideModifiers, wideKey);
+	_snwprintf_s(buffer, bufferSize, _TRUNCATE, L"%s+%s", wideModifiers, wideKey);
 }

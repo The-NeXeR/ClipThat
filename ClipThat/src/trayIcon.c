@@ -20,7 +20,7 @@ bool trayIconCreate(HWND ownerHWND) {
 		GetSystemMetrics(SM_CYSMICON),
 		LR_DEFAULTCOLOR
 	);
-	wcscpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(wchar_t), L"ClipThat");
+	wcsncpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(nid.szTip[0]), L"ClipThat", _TRUNCATE);
 
 	if (!Shell_NotifyIcon(NIM_ADD, &nid)) { return false; }
 	iconAdded = true;
@@ -30,20 +30,18 @@ bool trayIconCreate(HWND ownerHWND) {
 bool trayIconNotify(const wchar_t* title, const wchar_t* message) {
 	if (!iconAdded) return false;
 	nid.uFlags = NIF_INFO;
-	wcscpy_s(nid.szInfoTitle, _TRUNCATE, title);
-	wcscpy_s(nid.szInfo, _TRUNCATE, message);
+	wcsncpy_s(nid.szInfoTitle, sizeof(nid.szInfoTitle) / sizeof(nid.szInfoTitle[0]), title, _TRUNCATE);
+	wcsncpy_s(nid.szInfo, sizeof(nid.szInfo) / sizeof(nid.szInfo[0]), message, _TRUNCATE);
 	nid.dwInfoFlags = NIIF_INFO | NIIF_RESPECT_QUIET_TIME;
-
 	bool success = Shell_NotifyIconW(NIM_MODIFY, &nid);
 
-	// Restore the normal tray icon configuration.
 	nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
 
 	return success;
 }
 bool trayIconSetTip(const wchar_t* tip) {
 	if (!iconAdded) { return false; }
-	wcscpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(wchar_t), tip);
+	wcsncpy_s(nid.szTip, sizeof(nid.szTip) / sizeof(nid.szTip[0]), tip, _TRUNCATE);
 	return Shell_NotifyIcon(NIM_MODIFY, &nid) != FALSE;
 }
 void trayIconDestroy(void) {
